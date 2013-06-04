@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <parent>
+        <groupId>org.jasig.portal.overlay.dev</groupId>
+        <artifactId>dev-myportal-ear</artifactId>
+        <version>1</version>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>myportal-ear</artifactId>
+    <version>1-SNAPSHOT</version>
+    <packaging>ear</packaging>
+
+    <name>My Portal EAR</name>
+    <description>The complete My Portal package including dependent portlets.</description>
+    
+    <properties>
+        <!-- The location to deploy the ear file to, in this case it comes from the CATALINA_HOME environment variable -->
+        <catalina_home>${env.CATALINA_HOME}</catalina_home>
+        
+        <!-- The name of the deployed uPortal web application -->
+        <finalName>portal</finalName>
+    </properties>
+    
+    <scm>
+        <developerConnection>scm:git:git@github.com:UW-MultiEnvironment-Build/dev-myportal-ear.git</developerConnection>
+        <connection>scm:git:git://github.com/UW-MultiEnvironment-Build/dev-myportal-ear.git</connection>
+        <url>https://github.com/UW-MultiEnvironment-Build/dev-myportal-ear</url>
+    </scm>
+    
+    <repositories>
+        <repository>
+            <id>code.doit-uw-releases</id>
+            <url>https://code.doit.wisc.edu/maven/content/repositories/uw-releases/</url>
+            <releases>
+              <updatePolicy>always</updatePolicy>
+              <enabled>true</enabled>
+            </releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- 
+         | uPortal's overlay
+         +-->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>uportal-war</artifactId>
+            <version>1</version>
+            <type>war</type>
+        </dependency>
+        
+        <!-- 
+         | The plain jasig resource server, needed by uPortal and many portlets
+         +-->
+        <dependency>
+            <groupId>org.jasig.resourceserver</groupId>
+            <artifactId>resource-server-webapp</artifactId>
+            <version>${resource-server.version}</version>
+            <type>war</type>
+        </dependency>
+        
+        <!--
+         | Portlets and WebApps included with My Portal should be listed in this section 
+         +-->
+        
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>BookmarksPortlet</artifactId>
+            <version>1</version>
+            <type>war</type>
+        </dependency>
+
+        <!--
+         | uPortal shared jars, this section needs to match what is in the uportal-ear pom EXACTLY 
+         +-->
+        <dependency>
+            <groupId>javax.ccpp</groupId>
+            <artifactId>ccpp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.portlet</groupId>
+            <artifactId>portlet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.portals.pluto</groupId>
+            <artifactId>pluto-container-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.portals.pluto</groupId>
+            <artifactId>pluto-container-driver-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.portals.pluto</groupId>
+            <artifactId>pluto-taglib</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jasig.service.persondir</groupId>
+            <artifactId>person-directory-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${finalName}</finalName>
+        <plugins>
+            <plugin>
+                <!-- Skip deployment of the EAR artifact, it will never be referenced by another project -->
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Skip deployment of the EAR artifact, it will never be referenced by another project -->
+                <artifactId>maven-install-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-ear-plugin</artifactId>
+                <configuration>
+                    <fileNameMapping>no-version</fileNameMapping>
+                    <modules>
+                        <webModule>
+                            <groupId>${project.groupId}</groupId>
+                            <artifactId>uportal-war</artifactId>
+                            <bundleFileName>${finalName}.war</bundleFileName>
+                            <contextRoot>/${finalName}</contextRoot>
+                        </webModule>
+                        <webModule>
+                            <groupId>org.jasig.resourceserver</groupId>
+                            <artifactId>resource-server-webapp</artifactId>
+                            <bundleFileName>ResourceServingWebapp.war</bundleFileName>
+                            <contextRoot>/ResourceServingWebapp</contextRoot>
+                        </webModule>
+                    </modules>
+                </configuration>
+            </plugin>
+            <!-- Configure the release plugin to run with our ear-deploy profile -->
+            <plugin>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                   <releaseProfiles>ear-deploy</releaseProfiles>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <!--
+         | During the deploy phase run the uPortal ear-deploy plugin to move all of the
+         | portlets and uPortal into Tomcat
+         +-->
+        <profile>
+            <id>ear-deploy</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jasig.portal.maven</groupId>
+                        <artifactId>uportal-maven-plugin</artifactId>
+                        <version>1.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>ear-deploy</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>deploy-ear</goal>
+                                </goals>
+                                <configuration>
+                                    <deployDestination>${catalina_home}</deployDestination>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
